@@ -14,6 +14,32 @@ class PredvajalnikController
 
     public static function registracija()
     {
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
+            // Takes raw data from the request
+            $json = file_get_contents('php://input');
+            $params = json_decode($json);
+            // Params contain email and password
+            // Pogledam če v bazi že obstaja uporabnik s tem naslovom
+            if (!PredvajalnikDB::userExists($params->email)) {
+                // Geslo haširamo
+                $passHashed = password_hash($params->email, PASSWORD_BCRYPT);
+                $registered = PredvajalnikDB::registerUser($params->email, "default", $passHashed);
+                if ($registered) {
+                    // opravljena registracija
+                    $dbUser = PredvajalnikDB::getUser($params->email);
+                    echo (json_encode($dbUser));
+                }
+            } else {
+                $ret = [
+                    "message" => "Uporabnik s tem emailom že obstaja."
+                ];
+                http_response_code(400);
+                echo (json_encode($ret));
+            }
+        } else {
+            echo ("Loooool");
+        }
+        exit(0);
         $status = session_status();
         if ($status == PHP_SESSION_NONE) {
             //There is no active session
@@ -31,6 +57,7 @@ class PredvajalnikController
                 // 1. ali so vsa polja polna?
                 // 2. Ali je email v pravi obliki - regex
                 // 3. Shranimo uporabnika s hashiranim geslom
+
 
                 if (isset($_POST["email"]) && !empty($_POST["email"])) {
                     if (isset($_POST["geslo1"]) && !empty($_POST["geslo1"])) {

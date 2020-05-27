@@ -22,10 +22,10 @@ $urls = [
     "" => function () {
         PredvajalnikController::home();
     },
-    "registracija" => function () {
+    "auth/registracija" => function () {
         PredvajalnikController::registracija();
     },
-    "prijava" => function () {
+    "auth/prijava" => function () {
         PredvajalnikController::prijava();
     },
     "odjava" => function () {
@@ -79,7 +79,13 @@ $urls = [
 # The actual router.
 # Tries to invoke the function that is mapped for the given path
 try {
+    if($_SERVER["REQUEST_METHOD"] == "OPTIONS"){
+        header("Access-Control-Allow-Origin: *");
+        header("Access-Control-Allow-Headers: *");
+        exit();
+    }
     if (isset($urls[$path])) {
+        header("Access-Control-Allow-Origin: *");
         # Great, the path is defined in the router
         $urls[$path](); // invokes function that calls the controller
     } else {

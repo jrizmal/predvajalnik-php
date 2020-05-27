@@ -8,7 +8,7 @@ class PredvajalnikDB
     {
         $db = DBInit::getInstance();
 
-        $statement = $db->prepare("SELECT email, name, id, password FROM user WHERE email = :email");
+        $statement = $db->prepare("SELECT email, name, id, token, password FROM user WHERE email = :email");
         $statement->bindParam(":email", $email, PDO::PARAM_STR);
         $statement->execute();
 
@@ -27,10 +27,17 @@ class PredvajalnikDB
     }
     public static function registerUser($email, $name, $password)
     {
+        // TODO: Generate a token<500 chars
+        //Generate a random string.
+        $token = openssl_random_pseudo_bytes(128);
+        //Convert the binary data into hexadecimal representation.
+        $token = bin2hex($token);
+
         $db = DBInit::getInstance();
-        $statement = $db->prepare("INSERT INTO `user` (`email`, `name`, `password`) VALUES (:email, :name, :password)");
+        $statement = $db->prepare("INSERT INTO `user` (`email`, `name`, `password`, `token`) VALUES (:email, :name, :password, :token)");
         $statement->bindParam(":email", $email, PDO::PARAM_STR);
         $statement->bindParam(":name", $name, PDO::PARAM_STR);
+        $statement->bindParam(":token", $token, PDO::PARAM_STR);
         $statement->bindParam(":password", $password, PDO::PARAM_STR);
         return $statement->execute();
     }
