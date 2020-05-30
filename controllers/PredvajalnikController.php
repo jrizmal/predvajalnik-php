@@ -129,47 +129,90 @@ class PredvajalnikController
         }
     }
 
+    public static function profil()
+    {
+        // Pridob userja prek tokena in ga vrn v jsonu
+        $headers = getallheaders();
+        if(isset($headers["Authorization"]) && !empty($headers["Authorization"])){
+            $token = explode(" ",$headers["Authorization"])[1];
+            $user = PredvajalnikDB::getUserByToken($token);
+            if(!$user){
+                $ctx = [
+                    "message" => "Wrong token."
+                ];
+                http_response_code(403);
+                echo(json_encode($ctx));
+                exit();
+            }
+            $return = [
+                "user" => $user
+            ];
+            echo(json_encode($return));
+        }
+        exit();
+    }
+
     public static function prijava()
     {
-        $status = session_status();
-        if ($status == PHP_SESSION_NONE) {
-            //There is no active session
-            session_start();
-        }
-        if (isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] === true) {
-            ViewHelper::redirect(BASE_URL);
-        } else {
-            $ctx = [
-                "errorMessage" => ""
-            ];
-            if ($_SERVER["REQUEST_METHOD"] == "POST") {
-                // POST prijava
-                if (isset($_POST["email"]) && !empty($_POST["email"])) {
-                    if (isset($_POST["geslo"]) && !empty($_POST["geslo"])) {
-                        $email = $_POST["email"];
-                        $geslo = $_POST["geslo"];
-                        // echo $email . " " . $geslo;
-                        $dbUser = PredvajalnikDB::getUser($email);
-                        if (password_verify($geslo, $dbUser["password"])) {
-                            $_SESSION["loggedIn"] = true;
-                            $_SESSION["user"] = $dbUser;
-                            ViewHelper::render("./views/domov.php");
-                            return;
-                        } else {
-                            $ctx["errorMessage"] = "Napačna kombinacija emaila in gesla.";
-                        }
-                    } else {
-                        $ctx["errorMessage"] = "Manjka geslo.";
+        // Iz post vzem email pa username in returni token za tega userja
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
+
+            $json = file_get_contents('php://input');
+            $params = json_decode($json);
+            
+
+            if (isset($params->email) && !empty($params->email)) {
+                if (isset($params->password) && !empty($params->password)) {
+
+                    $email = $params->email;
+                    $password = $params->password;
+
+                    $user = PredvajalnikDB::getUser($email);
+                    if(!$user){
+                        $ctx = [
+                            "message" => "User with this email doesn't exist."
+                        ];
+                        http_response_code(400);
+                        echo(json_encode($ctx));
+                        exit();
                     }
-                } else {
-                    $ctx["errorMessage"] = "Manjka email naslov.";
+                    if (password_verify($password, $user["password"])) {
+                        echo (json_encode($user));
+                        exit();
+                    }else{
+                        $ctx = [
+                            "message" => "Wrong credentials."
+                        ];
+                        http_response_code(403);
+                        echo(json_encode($ctx));
+                        exit();
+                    }
+                }else{
+                    $ctx = [
+                        "message" => "Password missing."
+                    ];
+                    http_response_code(400);
+                    echo(json_encode($ctx));
+                    exit();
                 }
-                ViewHelper::render("./views/prijava.php", $ctx);
-            } else {
-                // GET prijava
-                ViewHelper::render("./views/prijava.php", $ctx);
             }
+            else{
+                $ctx = [
+                    "message" => "Email missing."
+                ];
+                http_response_code(400);
+                echo(json_encode($ctx));
+                exit();
+            }
+        }else{
+            $ctx = [
+                "message" => "Wrong method. Only POST allowed."
+            ];
+            http_response_code(400);
+            echo(json_encode($ctx));
+            exit();
         }
+        exit();
     }
     public static function odjava()
     {
@@ -177,24 +220,6 @@ class PredvajalnikController
         $_SESSION = array();
         session_destroy();
         ViewHelper::redirect(BASE_URL);
-    }
-
-    public static function profil()
-    {
-        $status = session_status();
-        if ($status == PHP_SESSION_NONE) {
-            //There is no active session
-            session_start();
-        }
-        if (isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] === true) {
-            $user = $_SESSION["user"];
-            $vars = [
-                "user" => $user,
-            ];
-            ViewHelper::render("./views/profil.php", $vars);
-        } else {
-            ViewHelper::redirect(BASE_URL);
-        }
     }
 
     public static function lestvica()

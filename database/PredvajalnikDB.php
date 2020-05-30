@@ -15,6 +15,17 @@ class PredvajalnikDB
         return $statement->fetch(PDO::FETCH_ASSOC);
     }
 
+    public static function getUserByToken($token)
+    {
+        $db = DBInit::getInstance();
+
+        $statement = $db->prepare("SELECT email, name, id FROM user WHERE token = :token");
+        $statement->bindParam(":token", $token, PDO::PARAM_STR);
+        $statement->execute();
+
+        return $statement->fetch(PDO::FETCH_ASSOC);
+    }
+
 
     public static function getAllPlaylists()
     {

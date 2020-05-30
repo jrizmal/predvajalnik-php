@@ -28,6 +28,9 @@ $urls = [
     "auth/prijava" => function () {
         PredvajalnikController::prijava();
     },
+    "auth/profil" => function () {
+        PredvajalnikController::profil();
+    },
     "odjava" => function () {
         PredvajalnikController::odjava();
     },
