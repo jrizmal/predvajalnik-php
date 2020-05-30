@@ -129,25 +129,115 @@ class PredvajalnikController
         }
     }
 
+    public static function isciSeznam()
+    {
+        if (isset($_GET["query"]) && !empty($_GET["query"])) {
+            $query = $_GET["query"];
+            $seznami = PredvajalnikDB::SearchPlaylists($query);
+            if (!$seznami) {
+                $ctx = [
+                    "message" => "Playlist does not exist."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(404);
+                echo (json_encode($ctx));
+                exit();
+            } else {
+                header('Content-Type: application/json');
+                echo (json_encode($seznami));
+                exit();
+            }
+        } else {
+            $ctx = [
+                "message" => "Wrong parameters."
+            ];
+            header('Content-Type: application/json');
+            http_response_code(400);
+            echo (json_encode($ctx));
+            exit();
+        }
+    }
+
+    public static function seznam()
+    {
+        if (isset($_GET["id"]) && !empty($_GET["id"])) {
+            $id = $_GET["id"];
+            $seznam = PredvajalnikDB::getPlaylist($id);
+            // var_dump($seznam);
+            if ($seznam) {
+                $return = [
+                    "playlist" => $seznam,
+                    "songs" => array(),
+                ];
+                // $seznam = array($seznam);
+                // dobi še vse skladbe iz seznama
+                $glasbe = PredvajalnikDB::getSongs($id);
+                if ($glasbe) {
+                    $return["songs"] = $glasbe;
+                }
+                header('Content-Type: application/json');
+                echo (json_encode($return));
+                exit();
+            } else {
+                $ctx = [
+                    "message" => "Playlist does not exist."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(404);
+                echo (json_encode($ctx));
+                exit();
+            }
+        }
+    }
+
     public static function profil()
     {
         // Pridob userja prek tokena in ga vrn v jsonu
         $headers = getallheaders();
-        if(isset($headers["Authorization"]) && !empty($headers["Authorization"])){
-            $token = explode(" ",$headers["Authorization"])[1];
+        if (isset($headers["Authorization"]) && !empty($headers["Authorization"])) {
+            $token = explode(" ", $headers["Authorization"])[1];
             $user = PredvajalnikDB::getUserByToken($token);
-            if(!$user){
+            if (!$user) {
                 $ctx = [
                     "message" => "Wrong token."
                 ];
+                header('Content-Type: application/json');
                 http_response_code(403);
-                echo(json_encode($ctx));
+                echo (json_encode($ctx));
                 exit();
             }
             $return = [
                 "user" => $user
             ];
-            echo(json_encode($return));
+            header('Content-Type: application/json');
+            echo (json_encode($return));
+        }
+        exit();
+    }
+
+
+    public static function publicProfil()
+    {
+        if (isset($_GET["id"]) && !empty($_GET["id"])) {
+
+            $user = PredvajalnikDB::getUserById($_GET["id"]);
+            if (!$user) {
+                $ctx = [
+                    "message" => "User does not exist."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(404);
+                echo (json_encode($ctx));
+                exit();
+            }
+            header('Content-Type: application/json');
+            echo (json_encode($user));
+        } else {
+            $return = [
+                "message" => "Wrong arguments."
+            ];
+            header('Content-Type: application/json');
+            echo (json_encode($return));
         }
         exit();
     }
@@ -159,7 +249,7 @@ class PredvajalnikController
 
             $json = file_get_contents('php://input');
             $params = json_decode($json);
-            
+
 
             if (isset($params->email) && !empty($params->email)) {
                 if (isset($params->password) && !empty($params->password)) {
@@ -168,48 +258,47 @@ class PredvajalnikController
                     $password = $params->password;
 
                     $user = PredvajalnikDB::getUser($email);
-                    if(!$user){
+                    if (!$user) {
                         $ctx = [
                             "message" => "User with this email doesn't exist."
                         ];
                         http_response_code(400);
-                        echo(json_encode($ctx));
+                        echo (json_encode($ctx));
                         exit();
                     }
                     if (password_verify($password, $user["password"])) {
                         echo (json_encode($user));
                         exit();
-                    }else{
+                    } else {
                         $ctx = [
                             "message" => "Wrong credentials."
                         ];
                         http_response_code(403);
-                        echo(json_encode($ctx));
+                        echo (json_encode($ctx));
                         exit();
                     }
-                }else{
+                } else {
                     $ctx = [
                         "message" => "Password missing."
                     ];
                     http_response_code(400);
-                    echo(json_encode($ctx));
+                    echo (json_encode($ctx));
                     exit();
                 }
-            }
-            else{
+            } else {
                 $ctx = [
                     "message" => "Email missing."
                 ];
                 http_response_code(400);
-                echo(json_encode($ctx));
+                echo (json_encode($ctx));
                 exit();
             }
-        }else{
+        } else {
             $ctx = [
                 "message" => "Wrong method. Only POST allowed."
             ];
             http_response_code(400);
-            echo(json_encode($ctx));
+            echo (json_encode($ctx));
             exit();
         }
         exit();
@@ -224,11 +313,15 @@ class PredvajalnikController
 
     public static function lestvica()
     {
-        ViewHelper::render("./views/lestvica.php");
+        $playlisti = PredvajalnikDB::getPlaylistChart();
+        echo (json_encode($playlisti));
+        exit();
     }
     public static function vsi()
     {
-        ViewHelper::render("./views/vsi.php");
+        $playlisti = PredvajalnikDB::getAllPlaylists();
+        echo (json_encode($playlisti));
+        exit();
     }
     public static function priljubljeni()
     {

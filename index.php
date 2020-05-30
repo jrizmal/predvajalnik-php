@@ -49,6 +49,15 @@ $urls = [
     "moji" => function () {
         PredvajalnikController::moji();
     },
+    "seznam" => function () {
+        PredvajalnikController::seznam();
+    },
+    "user-profil"=> function () {
+        PredvajalnikController::publicProfil();
+    },
+    "seznam/search"=> function () {
+        PredvajalnikController::isciSeznam();
+    },
     /* "book" => function () {
         if (isset($_GET["id"])) {
             BookController::get();

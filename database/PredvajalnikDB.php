@@ -26,12 +26,68 @@ class PredvajalnikDB
         return $statement->fetch(PDO::FETCH_ASSOC);
     }
 
+    public static function getUserById($id)
+    {
+        $db = DBInit::getInstance();
+
+        $statement = $db->prepare("SELECT email, name, id FROM user WHERE id = :id");
+        $statement->bindParam(":id", $id, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetch(PDO::FETCH_ASSOC);
+    }
+
 
     public static function getAllPlaylists()
     {
         $db = DBInit::getInstance();
 
-        $statement = $db->prepare("SELECT title, date, rating FROM playlist");
+        $statement = $db->prepare("SELECT id, title, date, rating FROM playlist");
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
+    public static function getPlaylist($id)
+    {
+        $db = DBInit::getInstance();
+
+        $statement = $db->prepare("SELECT p.id, p.title, u.id as user,u.name as user_name, date, rating FROM playlist p INNER JOIN user u ON p.user=u.id WHERE p.id = :id ");
+        $statement->bindParam(":id", $id, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchObject();
+    }
+
+    public static function SearchPlaylists($query)
+    {
+        $db = DBInit::getInstance();
+
+        $query = "%$query%";
+
+        $statement = $db->prepare("SELECT p.id, p.title, p.date, p.rating FROM playlist p WHERE p.title LIKE :q ");
+        $statement->bindParam(":q", $query, PDO::PARAM_STR);
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
+    public static function getSongs($playlist_id)
+    {
+        $db = DBInit::getInstance();
+
+        $statement = $db->prepare("SELECT id, url FROM song WHERE playlist = :id ");
+        $statement->bindParam(":id", $playlist_id, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
+    public static function getPlaylistChart()
+    {
+        $db = DBInit::getInstance();
+
+        $statement = $db->prepare("SELECT id, title, date, rating FROM playlist ORDER BY rating DESC");
         $statement->execute();
 
         return $statement->fetchAll();
