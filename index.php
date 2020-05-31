@@ -31,9 +31,9 @@ $urls = [
     "auth/profil" => function () {
         PredvajalnikController::profil();
     },
-    "odjava" => function () {
+    /* "odjava" => function () {
         PredvajalnikController::odjava();
-    },
+    }, */
     "profil" => function () {
         PredvajalnikController::profil();
     },
@@ -43,12 +43,12 @@ $urls = [
     "lestvica" => function () {
         PredvajalnikController::lestvica();
     },
-    "priljubljeni" => function () {
+    /* "priljubljeni" => function () {
         PredvajalnikController::priljubljeni();
     },
     "moji" => function () {
         PredvajalnikController::moji();
-    },
+    }, */
     "seznam" => function () {
         PredvajalnikController::seznam();
     },
@@ -60,6 +60,15 @@ $urls = [
     },
     "seznam/nov"=> function () {
         PredvajalnikController::novSeznam();
+    },
+    "seznam/komad/dodaj"=> function () {
+        PredvajalnikController::novKomad();
+    },
+    "komad/izbrisi"=> function () {
+        PredvajalnikController::izbrisiKomad();
+    },
+    "seznam/vote"=> function () {
+        PredvajalnikController::oceniSeznam();
     },
     /* "book" => function () {
         if (isset($_GET["id"])) {
@@ -97,6 +106,7 @@ try {
     if($_SERVER["REQUEST_METHOD"] == "OPTIONS"){
         header("Access-Control-Allow-Origin: *");
         header("Access-Control-Allow-Headers: *");
+        header("Access-Control-Allow-Methods: *");
         exit();
     }
     if (isset($urls[$path])) {

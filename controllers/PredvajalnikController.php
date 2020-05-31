@@ -17,29 +17,38 @@ class PredvajalnikController
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Takes raw data from the request
             $json = file_get_contents('php://input');
-            $params = json_decode($json);
+            $params = json_decode($json, $assoc=true);
             // Params contain email and password
             // Pogledam če v bazi že obstaja uporabnik s tem naslovom
-            if (!PredvajalnikDB::userExists($params->email)) {
+            if (!PredvajalnikDB::userExists($params["email"])) {
                 // Geslo haširamo
-                $passHashed = password_hash($params->email, PASSWORD_BCRYPT);
-                $registered = PredvajalnikDB::registerUser($params->email, "default", $passHashed);
+                $passHashed = password_hash($params["email"], PASSWORD_BCRYPT);
+                $registered = PredvajalnikDB::registerUser($params["email"], "Ime Priimek", $passHashed);
                 if ($registered) {
                     // opravljena registracija
                     $dbUser = PredvajalnikDB::getUser($params->email);
+                    header('Content-Type: application/json');
                     echo (json_encode($dbUser));
+                    exit();
                 }
             } else {
                 $ret = [
                     "message" => "Uporabnik s tem emailom že obstaja."
                 ];
+                header('Content-Type: application/json');
                 http_response_code(400);
                 echo (json_encode($ret));
+                exit();
             }
         } else {
-            echo ("Loooool");
+            $ctx = [
+                "message" => "Method not allowed."
+            ];
+            header('Content-Type: application/json');
+            http_response_code(405);
+            echo (json_encode($ctx));
+            exit();
         }
-        exit(0);
     }
 
     public static function isciSeznam()
@@ -81,7 +90,7 @@ class PredvajalnikController
 
             // dob naslov, dob seznam urljev
             $json = file_get_contents('php://input');
-            $params = json_decode($json, $assoc=true);
+            $params = json_decode($json, $assoc = true);
 
             // najprej nared nov seznam
             $created = PredvajalnikDB::newPlaylist($params["title"], $user["id"]);
@@ -117,29 +126,52 @@ class PredvajalnikController
             echo (json_encode($ctx));
             exit();
         }
+        exit();
+    }
 
-
-
+    public static function novKomad()
+    {
         $headers = getallheaders();
         if (isset($headers["Authorization"]) && !empty($headers["Authorization"])) {
             $token = explode(" ", $headers["Authorization"])[1];
             $user = PredvajalnikDB::getUserByToken($token);
-            if (!$user) {
+
+            // dob naslov, dob seznam urljev
+            $json = file_get_contents('php://input');
+            $params = json_decode($json, $assoc = true);
+
+            $playlist = PredvajalnikDB::getPlaylist($params["playlist"]);
+
+            if ($playlist["user"] != $user["id"]) {
                 $ctx = [
-                    "message" => "Wrong token."
+                    "message" => "You do not have permission to edit this playlist."
                 ];
                 header('Content-Type: application/json');
                 http_response_code(403);
                 echo (json_encode($ctx));
                 exit();
             }
-            $return = [
-                "user" => $user
+            $songList = $params["songs"];
+            for ($i = 0; $i < count($songList); $i++) {
+                $s = $songList[$i];
+                PredvajalnikDB::addSong($playlist["id"], $s);
+            }
+            $ctx = [
+                "message" => "Songs added."
             ];
             header('Content-Type: application/json');
-            echo (json_encode($return));
+            http_response_code(201);
+            echo (json_encode($ctx));
+            exit();
+        } else {
+            $ctx = [
+                "message" => "Wrong credentials."
+            ];
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo (json_encode($ctx));
+            exit();
         }
-        exit();
     }
 
     public static function seznam()
@@ -232,31 +264,35 @@ class PredvajalnikController
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             $json = file_get_contents('php://input');
-            $params = json_decode($json);
+            $params = json_decode($json, $assoc = true);
 
+            if (isset($params["email"]) && !empty($params["email"])) {
+                if (isset($params["password"]) && !empty($params["password"])) {
 
-            if (isset($params->email) && !empty($params->email)) {
-                if (isset($params->password) && !empty($params->password)) {
-
-                    $email = $params->email;
-                    $password = $params->password;
+                    $email = $params["email"];
+                    $password = $params["password"];
 
                     $user = PredvajalnikDB::getUser($email);
                     if (!$user) {
                         $ctx = [
                             "message" => "User with this email doesn't exist."
                         ];
+                        header('Content-Type: application/json');
                         http_response_code(400);
                         echo (json_encode($ctx));
                         exit();
                     }
+
                     if (password_verify($password, $user["password"])) {
+                        header('Content-Type: application/json');
+                        http_response_code(200);
                         echo (json_encode($user));
                         exit();
                     } else {
                         $ctx = [
                             "message" => "Wrong credentials."
                         ];
+                        header('Content-Type: application/json');
                         http_response_code(403);
                         echo (json_encode($ctx));
                         exit();
@@ -279,20 +315,14 @@ class PredvajalnikController
             }
         } else {
             $ctx = [
-                "message" => "Wrong method. Only POST allowed."
+                "message" => "Method not allowed."
             ];
-            http_response_code(400);
+            header('Content-Type: application/json');
+            http_response_code(405);
             echo (json_encode($ctx));
             exit();
         }
         exit();
-    }
-    public static function odjava()
-    {
-        session_start();
-        $_SESSION = array();
-        session_destroy();
-        ViewHelper::redirect(BASE_URL);
     }
 
     public static function lestvica()
@@ -307,141 +337,100 @@ class PredvajalnikController
         echo (json_encode($playlisti));
         exit();
     }
-    public static function priljubljeni()
+
+    public static function izbrisiKomad()
     {
-        ViewHelper::render("./views/priljubljeni.php");
-    }
-    public static function moji()
-    {
-        ViewHelper::render("./views/moji.php");
-    }
-
-
-
-
-
-
-
-
-
-    public static function get()
-    {
-        $variables = ["book" => PredvajalnikDB::get($_GET["id"])];
-        ViewHelper::render("view/book-detail.php", $variables);
-    }
-
-    public static function showAddForm($variables = array(
-        "author" => "", "title" => "",
-        "price" => "", "year" => ""
-    ))
-    {
-        ViewHelper::render("view/book-add.php", $variables);
-    }
-
-    public static function add()
-    {
-        $validData = isset($_POST["author"]) && !empty($_POST["author"]) &&
-            isset($_POST["title"]) && !empty($_POST["title"]) &&
-            isset($_POST["year"]) && !empty($_POST["year"]) &&
-            isset($_POST["price"]) && !empty($_POST["price"]);
-
-        if ($validData) {
-            PredvajalnikDB::insert($_POST["author"], $_POST["title"], $_POST["price"], $_POST["year"]);
-            ViewHelper::redirect(BASE_URL . "book");
-        } else {
-            self::showAddForm($_POST);
-        }
-    }
-
-    public static function searchBook()
-    {
-        if (isset($_GET["query"])) {
-            $query = $_GET["query"];
-            $hits = PredvajalnikDB::search($query);
-        } else {
-            $hits = [];
-            $query = "";
-        }
-        $vars = [
-            "hits" => $hits,
-            "query" => $query
-        ];
-        ViewHelper::render("view/book-search.php", $vars);
-    }
-
-    public static function editBook()
-    {
-        $edit = isset($_POST["author"]) && !empty($_POST["author"]) &&
-            isset($_POST["title"]) && !empty($_POST["title"]) &&
-            isset($_POST["price"]) && !empty($_POST["price"]) &&
-            isset($_POST["id"]) && !empty($_POST["id"]) &&
-            isset($_POST["year"]) && !empty($_POST["year"]);
-
-        $delete = isset($_POST["delete_confirmation"]) &&
-            isset($_POST["id"]) && !empty($_POST["id"]);
-
-        // If we send a valid POST request (contains all required data)
-        if ($edit) {
-            try {
-                PredvajalnikDB::update($_POST["id"], $_POST["author"], $_POST["title"], $_POST["price"], $_POST["year"]);
-                // Go to the detail page
-                header("Location: " . BASE_URL);
-            } catch (Exception $e) {
-                $errorMessage = "A database error occured: $e";
-            }
-            // Do we delete the record?
-        } else if ($delete) {
-            try {
-                PredvajalnikDB::delete($_POST["id"]);
-                header("Location: index.php");
-            } catch (Exception $e) {
-                $errorMessage = "A database error occured: $e";
-            }
-            // Read the contents from the DB and populate the form with it
-        } else {
-            try {
-                // GET id from either GET or POST request
-                $book = PredvajalnikDB::get($_REQUEST["id"]);
-            } catch (Exception $e) {
-                $errorMessage = "A database error occured: $e";
-            }
-        }
-
-        $context = array();
-
-        if (isset($book)) {
-            $context["book"] = $book;
-        }
-
-        if (isset($errorMessage)) {
-            $context["errorMessage"] = $errorMessage;
-        }
-
-        ViewHelper::render("view/book-edit.php", $context);
-    }
-
-
-    public static function deleteBook()
-    {
-        $delete = isset($_POST["delete_confirmation"]) &&
-            isset($_POST["id"]) && !empty($_POST["id"]);
-        if ($delete) {
-            try {
-                PredvajalnikDB::delete($_POST["id"]);
-                ViewHelper::redirect(BASE_URL);
-                return;
-            } catch (Exception $e) {
-                $errorMessage = "A database error occured: $e";
-                return;
+        if ($_SERVER["REQUEST_METHOD"] == "DELETE") {
+            // preberi podatke
+            $json = file_get_contents('php://input');
+            $params = json_decode($json, $assoc = true);
+            if (isset($params["id"]) && !empty($params["id"])) {
+                $id = $params["id"];
+                // Delete from db
+                $deleted = PredvajalnikDB::deleteSong($id);
+                if ($deleted) {
+                    $ctx = [
+                        "message" => "Song deleted."
+                    ];
+                    header('Content-Type: application/json');
+                    http_response_code(200);
+                    echo (json_encode($ctx));
+                    exit();
+                } else {
+                    $ctx = [
+                        "message" => "Error deleting song."
+                    ];
+                    header('Content-Type: application/json');
+                    http_response_code(500);
+                    echo (json_encode($ctx));
+                    exit();
+                }
+            } else {
+                $ctx = [
+                    "message" => "Wrong parameters."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(400);
+                echo (json_encode($ctx));
+                exit();
             }
         } else {
-            $book = PredvajalnikDB::get($_REQUEST["id"]);
-            $context = [
-                "book" => $book
+            $ctx = [
+                "message" => "Method not allowed."
             ];
-            ViewHelper::render("view/book-edit.php", $context);
+            header('Content-Type: application/json');
+            http_response_code(405);
+            echo (json_encode($ctx));
+            exit();
         }
     }
 
-    # TODO: Implement controlers for searching, editing and deleting books
+    public static function oceniSeznam()
+    {
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
+            $headers = getallheaders();
+            if (isset($headers["Authorization"]) && !empty($headers["Authorization"])) {
+                $token = explode(" ", $headers["Authorization"])[1];
+                $user = PredvajalnikDB::getUserByToken($token);
+                $json = file_get_contents('php://input');
+                $params = json_decode($json, $assoc = true);
+                if ((isset($params["playlist"]) && !empty($params["playlist"])) && (isset($params["action"]) && !empty($params["action"]))) {
+                    // povečaj/zmanjšaj rating na samem playlistu
+                    $playlist_id = $params["playlist"];
+                    $action = $params["action"];
+                    if ($action == "up") {
+                        PredvajalnikDB::incrementVote($playlist_id);
+                    } else {
+                        PredvajalnikDB::decrementVote($playlist_id);
+                    }
+
+                    $ctx = [
+                        "message" => "Voted successfully."
+                    ];
+                    header('Content-Type: application/json');
+                    http_response_code(201);
+                    echo (json_encode($ctx));
+                    exit();
+                } else {
+                    $ctx = [
+                        "message" => "Bad request."
+                    ];
+                    header('Content-Type: application/json');
+                    http_response_code(400);
+                    echo (json_encode($ctx));
+                    exit();
+                }
+            } else {
+                $ctx = [
+                    "message" => "Forbidden."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(403);
+                echo (json_encode($ctx));
+                exit();
+            }
+            // preberi podatke
+
+        }
+    }
 }

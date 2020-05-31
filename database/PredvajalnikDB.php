@@ -56,7 +56,7 @@ class PredvajalnikDB
         $statement->bindParam(":id", $id, PDO::PARAM_INT);
         $statement->execute();
 
-        return $statement->fetchObject();
+        return $statement->fetch(PDO::FETCH_ASSOC);
     }
 
     public static function SearchPlaylists($query)
@@ -90,10 +90,10 @@ class PredvajalnikDB
         $statement = $db->prepare("INSERT INTO `playlist` (`title`, `date`, `user`, `rating`) VALUES (:title, NOW(), :userid, '0')");
         $statement->bindParam(":title", $title, PDO::PARAM_STR);
         $statement->bindParam(":userid", $userid, PDO::PARAM_INT);
-        
+
         $statement->execute();
 
-        
+
 
         if ($statement) {
             return $db->lastInsertId();
@@ -125,10 +125,8 @@ class PredvajalnikDB
     }
     public static function registerUser($email, $name, $password)
     {
-        // TODO: Generate a token<500 chars
-        //Generate a random string.
-        $token = openssl_random_pseudo_bytes(128);
-        //Convert the binary data into hexadecimal representation.
+        //Generate a token.
+        $token = openssl_random_pseudo_bytes(32);
         $token = bin2hex($token);
 
         $db = DBInit::getInstance();
@@ -154,77 +152,39 @@ class PredvajalnikDB
         }
     }
 
-
-    public static function get($id)
+    public static function deleteSong($id)
     {
         $db = DBInit::getInstance();
 
-        $statement = $db->prepare("SELECT id, author, title, price, year FROM book 
-            WHERE id = :id");
+        $statement = $db->prepare("DELETE FROM song WHERE id = :id");
         $statement->bindParam(":id", $id, PDO::PARAM_INT);
-        $statement->execute();
-
-        $book = $statement->fetch();
-
-        if ($book != null) {
-            return $book;
-        } else {
-            throw new InvalidArgumentException("Error Processing Request: $_GET[id]", 1);
-        }
+        return $statement->execute();
     }
 
-    public static function insert($author, $title, $price, $year)
+    public static function incrementVote($id)
     {
         $db = DBInit::getInstance();
-
-        $statement = $db->prepare("INSERT INTO book (author, title, price, year)
-            VALUES (:author, :title, :price, :year)");
-        $statement->bindParam(":author", $author);
-        $statement->bindParam(":title", $title);
-        $statement->bindParam(":price", $price);
-        $statement->bindParam(":year", $year);
-        $statement->execute();
-    }
-
-    public static function update($id, $author, $title, $price, $year)
-    {
-        $db = DBInit::getInstance();
-
-        $statement = $db->prepare("UPDATE book SET author = :author,
-            title = :title, price = :price, year = :year WHERE id = :id");
-        $statement->bindParam(":author", $author);
-        $statement->bindParam(":title", $title);
-        $statement->bindParam(":price", $price);
-        $statement->bindParam(":year", $year);
+        $statement = $db->prepare("UPDATE playlist SET rating = rating + 1 WHERE id = :id");
         $statement->bindParam(":id", $id, PDO::PARAM_INT);
-        $statement->execute();
+        return $statement->execute();
     }
 
-    public static function delete($id)
+    public static function decrementVote($id)
     {
         $db = DBInit::getInstance();
-
-        $statement = $db->prepare("DELETE FROM book WHERE id = :id");
+        $statement = $db->prepare("UPDATE playlist SET rating = rating - 1 WHERE id = :id");
         $statement->bindParam(":id", $id, PDO::PARAM_INT);
-        $statement->execute();
+        return $statement->execute();
     }
 
-    public static function search($query)
+    public static function addVote($playlist, $user, $action)
     {
         $db = DBInit::getInstance();
+        $statement = $db->prepare("INSERT INTO `user_vote` (`user`, `playlist`, `action`) VALUES (:user, :playlist, :action)");
+        $statement->bindParam(":user", $email, PDO::PARAM_INT);
+        $statement->bindParam(":playlist", $name, PDO::PARAM_INT);
+        $statement->bindParam(":action", $token, PDO::PARAM_STR);
 
-        $statement = $db->prepare("SELECT id, author, title, price, year FROM book 
-            WHERE author LIKE :query OR title LIKE :query");
-
-        # Alternatively, we could execute: 
-        # $statement = $db->prepare("SELECT id, author, title, price FROM book 
-        #    WHERE MATCH (author, title) against (:query)");
-        # However, we would have to set the table ("book") storage engine to 
-        # MyISAM and set a joint full-text index to author and title columns
-
-        $statement->bindValue(":query", '%' . $query . '%');
-        $statement->execute();
-
-        return $statement->fetchAll();
+        return $statement->execute();
     }
 }
