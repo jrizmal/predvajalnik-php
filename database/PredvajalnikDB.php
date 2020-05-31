@@ -42,7 +42,7 @@ class PredvajalnikDB
     {
         $db = DBInit::getInstance();
 
-        $statement = $db->prepare("SELECT id, title, date, rating FROM playlist");
+        $statement = $db->prepare("SELECT p.id, p.title, u.id as user,u.name as user_name, date, rating FROM playlist p INNER JOIN user u ON p.user=u.id");
         $statement->execute();
 
         return $statement->fetchAll();
@@ -118,7 +118,7 @@ class PredvajalnikDB
     {
         $db = DBInit::getInstance();
 
-        $statement = $db->prepare("SELECT id, title, date, rating FROM playlist ORDER BY rating DESC");
+        $statement = $db->prepare("SELECT p.id, p.title, u.id as user,u.name as user_name, date, rating FROM playlist p INNER JOIN user u ON p.user=u.id ORDER BY rating DESC");
         $statement->execute();
 
         return $statement->fetchAll();
@@ -181,10 +181,42 @@ class PredvajalnikDB
     {
         $db = DBInit::getInstance();
         $statement = $db->prepare("INSERT INTO `user_vote` (`user`, `playlist`, `action`) VALUES (:user, :playlist, :action)");
-        $statement->bindParam(":user", $email, PDO::PARAM_INT);
-        $statement->bindParam(":playlist", $name, PDO::PARAM_INT);
-        $statement->bindParam(":action", $token, PDO::PARAM_STR);
+        $statement->bindParam(":user", $user, PDO::PARAM_INT);
+        $statement->bindParam(":playlist", $playlist, PDO::PARAM_INT);
+        $statement->bindParam(":action", $action, PDO::PARAM_STR);
 
         return $statement->execute();
+    }
+
+    public static function getPlaylistsByUser($id)
+    {
+        $db = DBInit::getInstance();
+
+        $statement = $db->prepare("SELECT p.id, p.title, u.id as user,u.name as user_name, date, rating FROM playlist p INNER JOIN user u ON p.user=u.id WHERE p.user = :id ");
+        $statement->bindParam(":id", $id, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function addPlaylistToLibrary($playlist, $user)
+    {
+        $db = DBInit::getInstance();
+        $statement = $db->prepare("INSERT INTO `user_library` (`user`, `playlist`) VALUES (:user, :playlist)");
+        $statement->bindParam(":user", $user, PDO::PARAM_INT);
+        $statement->bindParam(":playlist", $playlist, PDO::PARAM_INT);
+
+        return $statement->execute();
+    }
+
+    public static function getUserLibrary($id)
+    {
+        $db = DBInit::getInstance();
+
+        $statement = $db->prepare("SELECT p.* from playlist p inner join user_library ul on ul.playlist = p.id where ul.user = :id");
+        $statement->bindParam(":id", $id, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
     }
 }

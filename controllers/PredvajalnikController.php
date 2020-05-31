@@ -17,7 +17,7 @@ class PredvajalnikController
         if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Takes raw data from the request
             $json = file_get_contents('php://input');
-            $params = json_decode($json, $assoc=true);
+            $params = json_decode($json, $assoc = true);
             // Params contain email and password
             // Pogledam če v bazi že obstaja uporabnik s tem naslovom
             if (!PredvajalnikDB::userExists($params["email"])) {
@@ -431,6 +431,141 @@ class PredvajalnikController
             }
             // preberi podatke
 
+        }
+    }
+
+    public static function mojiSeznami()
+    {
+        $headers = getallheaders();
+        if (isset($headers["Authorization"]) && !empty($headers["Authorization"])) {
+            $token = explode(" ", $headers["Authorization"])[1];
+            $user = PredvajalnikDB::getUserByToken($token);
+
+            header('Content-Type: application/json');
+            $playlists = PredvajalnikDB::getPlaylistsByUser($user["id"]);
+            echo (json_encode($playlists));
+            exit();
+        } else {
+            $ctx = [
+                "message" => "Forbidden."
+            ];
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo (json_encode($ctx));
+            exit();
+        }
+    }
+
+    public static function uporabnikoviSeznami()
+    {
+        if ($_SERVER["REQUEST_METHOD"] == "GET") {
+            if (isset($_GET["user"]) && !empty($_GET["user"])) {
+                $id = $_GET["user"];
+                $lists = PredvajalnikDB::getPlaylistsByUser($id);
+                header('Content-Type: application/json');
+                echo (json_encode($lists));
+                exit();
+            }else{
+                $ctx = [
+                    "message" => "Bad request."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(400);
+                echo (json_encode($ctx));
+                exit();
+            }
+        } else {
+            $ctx = [
+                "message" => "Method not allowed."
+            ];
+            header('Content-Type: application/json');
+            http_response_code(405);
+            echo (json_encode($ctx));
+            exit();
+        }
+    }
+
+
+    public static function dodajVZbirko()
+    {
+        if ($_SERVER["REQUEST_METHOD"] == "POST") {
+            $headers = getallheaders();
+            if (isset($headers["Authorization"]) && !empty($headers["Authorization"])) {
+                $token = explode(" ", $headers["Authorization"])[1];
+                $user = PredvajalnikDB::getUserByToken($token);
+
+                $json = file_get_contents('php://input');
+                $params = json_decode($json, $assoc = true);
+
+                $created = PredvajalnikDB::addPlaylistToLibrary($params["playlist"], $user["id"]);
+                if ($created) {
+                    $ctx = [
+                        "message" => "Playlist added to library."
+                    ];
+                    header('Content-Type: application/json');
+                    http_response_code(201);
+                    echo (json_encode($ctx));
+                    exit();
+                }
+                $ctx = [
+                    "message" => "Error adding a playlist."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(500);
+                echo (json_encode($ctx));
+                exit();
+            } else {
+                $ctx = [
+                    "message" => "Forbidden."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(403);
+                echo (json_encode($ctx));
+                exit();
+            }
+        } else {
+            $ctx = [
+                "message" => "Method not allowed."
+            ];
+            header('Content-Type: application/json');
+            http_response_code(405);
+            echo (json_encode($ctx));
+            exit();
+        }
+    }
+
+
+    public static function mojaKnjiznica()
+    {
+        if ($_SERVER["REQUEST_METHOD"] == "GET") {
+            $headers = getallheaders();
+            if (isset($headers["Authorization"]) && !empty($headers["Authorization"])) {
+                $token = explode(" ", $headers["Authorization"])[1];
+                $user = PredvajalnikDB::getUserByToken($token);
+
+
+
+                $playlists = PredvajalnikDB::getUserLibrary($user["id"]);
+                header('Content-Type: application/json');
+                echo (json_encode($playlists));
+                exit();
+            } else {
+                $ctx = [
+                    "message" => "Forbidden."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(403);
+                echo (json_encode($ctx));
+                exit();
+            }
+        } else {
+            $ctx = [
+                "message" => "Method not allowed."
+            ];
+            header('Content-Type: application/json');
+            http_response_code(405);
+            echo (json_encode($ctx));
+            exit();
         }
     }
 }

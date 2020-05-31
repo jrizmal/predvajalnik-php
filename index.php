@@ -70,6 +70,18 @@ $urls = [
     "seznam/vote"=> function () {
         PredvajalnikController::oceniSeznam();
     },
+    "seznam/moji"=> function () {
+        PredvajalnikController::mojiSeznami();
+    },
+    "seznam/v-zbirko"=> function () {
+        PredvajalnikController::dodajVZbirko();
+    },
+    "seznam/knjiznica"=> function () {
+        PredvajalnikController::mojaKnjiznica();
+    },
+    "seznam/uporabnik"=> function () {
+        PredvajalnikController::uporabnikoviSeznami();
+    },
     /* "book" => function () {
         if (isset($_GET["id"])) {
             BookController::get();
