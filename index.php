@@ -58,6 +58,9 @@ $urls = [
     "seznam/search"=> function () {
         PredvajalnikController::isciSeznam();
     },
+    "seznam/nov"=> function () {
+        PredvajalnikController::novSeznam();
+    },
     /* "book" => function () {
         if (isset($_GET["id"])) {
             BookController::get();

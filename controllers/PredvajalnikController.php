@@ -40,93 +40,6 @@ class PredvajalnikController
             echo ("Loooool");
         }
         exit(0);
-        $status = session_status();
-        if ($status == PHP_SESSION_NONE) {
-            //There is no active session
-            session_start();
-        }
-        if (isset($_SESSION["loggedIn"]) && $_SESSION["loggedIn"] === true) {
-            ViewHelper::redirect(BASE_URL);
-        } else {
-            $ctx = [
-                "errorMessage" => ""
-            ];
-            if ($_SERVER["REQUEST_METHOD"] == "POST") {
-                // POST prijava
-
-                // 1. ali so vsa polja polna?
-                // 2. Ali je email v pravi obliki - regex
-                // 3. Shranimo uporabnika s hashiranim geslom
-
-
-                if (isset($_POST["email"]) && !empty($_POST["email"])) {
-                    if (isset($_POST["geslo1"]) && !empty($_POST["geslo1"])) {
-                        if (isset($_POST["geslo2"]) && !empty($_POST["geslo2"])) {
-                            if (isset($_POST["ime"]) && !empty($_POST["ime"])) {
-                                $geslo1 = $_POST["geslo1"];
-                                $geslo2 = $_POST["geslo2"];
-                                // preverimo če sta gesli enaki
-                                if ($geslo1 == $geslo2) {
-                                    $geslo = $geslo1;
-                                    if (strlen($geslo) > 8) {
-                                    } else {
-                                        $ctx["errorMessage"] = "Geslo mora biti dolgo vsaj 8 znakov";
-                                    }
-                                    $email = $_POST["email"];
-                                    $ime = $_POST["ime"];
-                                    // preverjanje vhoda
-                                    if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                                        // email je ok
-                                        // preverimo če uporabnik s tem mailom že obstaja
-                                        if (!PredvajalnikDB::userExists($email)) {
-                                            // ne obstaja, nadaljujemo
-                                            $passHashed = password_hash($geslo, PASSWORD_BCRYPT);
-                                            $registered = PredvajalnikDB::registerUser($email, $ime, $passHashed);
-                                            if ($registered) {
-                                                // opravljena registracija
-                                                // Uporabnika kar prijavim
-                                                $dbUser = PredvajalnikDB::getUser($email);
-                                                // ViewHelper::redirect(BASE_URL . "prijava/");
-                                                if (password_verify($geslo, $dbUser["password"])) {
-                                                    $_SESSION["loggedIn"] = true;
-                                                    $_SESSION["user"] = $dbUser;
-                                                    ViewHelper::render("./views/domov.php");
-                                                    return;
-                                                } else {
-                                                    $ctx["errorMessage"] = "Napačna kombinacija emaila in gesla.";
-                                                }
-                                            } else {
-                                                // neka napaka
-                                                $ctx["errorMessage"] = "Napaka pri registraciji";
-                                            }
-                                        } else {
-                                            // uporabnik s tem mailom že obstaja
-                                            $ctx["errorMessage"] = "Uporabnik s tem emailom že obstaja";
-                                        }
-                                    } else {
-                                        $ctx["errorMessage"] = "Napačen email naslov";
-                                    }
-                                } else {
-                                    $ctx["errorMessage"] = "Gesli se ne ujemata";
-                                }
-                            } else {
-                                $ctx["errorMessage"] = "Manjka ime";
-                            }
-                        } else {
-                            $ctx["errorMessage"] = "Manjka ponovljeno geslo";
-                        }
-                    } else {
-                        $ctx["errorMessage"] = "Manjka geslo";
-                    }
-                } else {
-                    $ctx["errorMessage"] = "Manjka email naslov";
-                }
-                ViewHelper::render("./views/registracija.php", $ctx);
-            } else {
-                // GET prijava
-                ViewHelper::render("./views/registracija.php", $ctx);
-            }
-        }
     }
 
     public static function isciSeznam()
@@ -156,6 +69,77 @@ class PredvajalnikController
             echo (json_encode($ctx));
             exit();
         }
+    }
+
+
+    public static function novSeznam()
+    {
+        $headers = getallheaders();
+        if (isset($headers["Authorization"]) && !empty($headers["Authorization"])) {
+            $token = explode(" ", $headers["Authorization"])[1];
+            $user = PredvajalnikDB::getUserByToken($token);
+
+            // dob naslov, dob seznam urljev
+            $json = file_get_contents('php://input');
+            $params = json_decode($json, $assoc=true);
+
+            // najprej nared nov seznam
+            $created = PredvajalnikDB::newPlaylist($params["title"], $user["id"]);
+            // nato nanj daj vse komade
+            if (!$created) {
+                $ctx = [
+                    "message" => "Error creating a playlist."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(500);
+                echo (json_encode($ctx));
+                exit();
+            } else {
+                $songList = $params["songs"];
+                for ($i = 0; $i < count($songList); $i++) {
+                    $s = $songList[$i];
+                    PredvajalnikDB::addSong($created, $s);
+                }
+                $ctx = [
+                    "message" => "Playlist created."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(201);
+                echo (json_encode($ctx));
+                exit();
+            }
+        } else {
+            $ctx = [
+                "message" => "Wrong credentials."
+            ];
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo (json_encode($ctx));
+            exit();
+        }
+
+
+
+        $headers = getallheaders();
+        if (isset($headers["Authorization"]) && !empty($headers["Authorization"])) {
+            $token = explode(" ", $headers["Authorization"])[1];
+            $user = PredvajalnikDB::getUserByToken($token);
+            if (!$user) {
+                $ctx = [
+                    "message" => "Wrong token."
+                ];
+                header('Content-Type: application/json');
+                http_response_code(403);
+                echo (json_encode($ctx));
+                exit();
+            }
+            $return = [
+                "user" => $user
+            ];
+            header('Content-Type: application/json');
+            echo (json_encode($return));
+        }
+        exit();
     }
 
     public static function seznam()

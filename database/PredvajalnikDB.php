@@ -83,6 +83,37 @@ class PredvajalnikDB
         return $statement->fetchAll();
     }
 
+    public static function newPlaylist($title, $userid)
+    {
+        $db = DBInit::getInstance();
+
+        $statement = $db->prepare("INSERT INTO `playlist` (`title`, `date`, `user`, `rating`) VALUES (:title, NOW(), :userid, '0')");
+        $statement->bindParam(":title", $title, PDO::PARAM_STR);
+        $statement->bindParam(":userid", $userid, PDO::PARAM_INT);
+        
+        $statement->execute();
+
+        
+
+        if ($statement) {
+            return $db->lastInsertId();
+        }
+
+        return $statement;
+    }
+
+    public static function addSong($playlist_id, $url)
+    {
+        $db = DBInit::getInstance();
+
+        $statement = $db->prepare("INSERT INTO `song` (`url`, `playlist`) VALUES (:url, :playlist)");
+        $statement->bindParam(":url", $url, PDO::PARAM_STR);
+        $statement->bindParam(":playlist", $playlist_id, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement;
+    }
+
     public static function getPlaylistChart()
     {
         $db = DBInit::getInstance();
